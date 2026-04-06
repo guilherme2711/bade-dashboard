@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Login — Lojas Bade</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: system-ui, sans-serif; background: #f2f1ec; min-height: 100vh; display: flex; align-items: center; justify-content: center; }
+    .card { background: #fff; border-radius: 16px; border: 0.5px solid #e2e2d8; padding: 2.5rem 2rem; width: 100%; max-width: 360px; }
+    .logo { text-align: center; margin-bottom: 2rem; }
+    .logo h1 { font-size: 1.3rem; font-weight: 500; color: #1a1a18; }
+    .logo p { font-size: 0.78rem; color: #aaa; margin-top: 4px; }
+    .field { margin-bottom: 1rem; }
+    .field label { display: block; font-size: 0.75rem; color: #888; margin-bottom: 5px; text-transform: uppercase; letter-spacing: 0.04em; }
+    .field input { width: 100%; padding: 10px 14px; border-radius: 8px; border: 0.5px solid #ccc; font-size: 0.88rem; color: #1a1a18; outline: none; background: #fafaf6; }
+    .field input:focus { border-color: #374151; background: #fff; }
+    .btn-login { width: 100%; padding: 11px; border-radius: 8px; border: none; background: #1a1a18; color: #fff; font-size: 0.88rem; font-weight: 500; cursor: pointer; margin-top: 0.5rem; }
+    .btn-login:hover { background: #374151; }
+    .erro { background: #FEE2E2; color: #B91C1C; font-size: 0.78rem; padding: 8px 12px; border-radius: 8px; margin-bottom: 1rem; text-align: center; display: none; }
+    .erro.show { display: block; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="logo">
+      <h1>Lojas Bade</h1>
+      <p>Dashboard de Giro de Produtos</p>
+    </div>
+    <div class="erro" id="erro">Usuário ou senha incorretos.</div>
+    <form method="POST" action="/login" onsubmit="return validar()">
+      <div class="field">
+        <label>Usuário</label>
+        <input type="text" name="usuario" id="usuario" placeholder="Digite seu usuário" autocomplete="username"/>
+      </div>
+      <div class="field">
+        <label>Senha</label>
+        <input type="password" name="senha" id="senha" placeholder="Digite sua senha" autocomplete="current-password"/>
+      </div>
+      <button type="submit" class="btn-login">Entrar</button>
+    </form>
+  </div>
+  <script>
+    // Mostra erro se veio da query string ?erro=1
+    if (window.location.search.includes('erro=1')) {
+      document.getElementById('erro').classList.add('show');
+    }
+    function validar() {
+      const u = document.getElementById('usuario').value.trim();
+      const s = document.getElementById('senha').value.trim();
+      if (!u || !s) { document.getElementById('erro').textContent = 'Preencha usuário e senha.'; document.getElementById('erro').classList.add('show'); return false; }
+      return true;
+    }
+  </script>
+</body>
+</html>

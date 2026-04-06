@@ -1,0 +1,619 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Giro de Produtos — Lojas Bade</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: system-ui, sans-serif; background: #f2f1ec; color: #1a1a18; min-height: 100vh; padding: 1.5rem 2rem; }
+
+    header { display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: 1rem; margin-bottom: 1.25rem; }
+    h1 { font-size: 1.25rem; font-weight: 500; }
+    .subtitle { font-size: 0.78rem; color: #999; margin-top: 3px; }
+    #status { font-size: 0.72rem; color: #bbb; }
+    .btn-refresh { padding: 7px 18px; border-radius: 8px; border: 0.5px solid #ccc; background: #fff; font-size: 0.8rem; cursor: pointer; color: #555; }
+    .btn-refresh:hover { background: #eeeee6; }
+
+    .tabs { display: flex; margin-bottom: 1.25rem; border-bottom: 1.5px solid #e2e2d8; }
+    .tab { padding: 8px 22px; font-size: 0.85rem; cursor: pointer; color: #aaa; border-bottom: 2px solid transparent; margin-bottom: -1.5px; background: transparent; border-top: none; border-left: none; border-right: none; }
+    .tab.active { color: #1a1a18; font-weight: 500; border-bottom-color: #1a1a18; }
+    .tab:hover:not(.active) { color: #555; }
+    .tab-badge { display: inline-block; background: #f0f0e8; color: #888; font-size: 0.68rem; padding: 1px 6px; border-radius: 8px; margin-left: 6px; vertical-align: middle; }
+    .tab.active .tab-badge { background: #1a1a18; color: #fff; }
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+
+    .metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 1.25rem; }
+    .mcard { background: #fff; border-radius: 10px; padding: 0.9rem 1.1rem; border: 0.5px solid #e2e2d8; }
+    .mcard .lbl { font-size: 0.7rem; color: #aaa; margin-bottom: 3px; text-transform: uppercase; letter-spacing: 0.04em; }
+    .mcard .val { font-size: 1.6rem; font-weight: 500; }
+
+    .toolbar { display: flex; gap: 8px; margin-bottom: 0.85rem; flex-wrap: wrap; align-items: center; }
+    .fbtn { padding: 5px 14px; border-radius: 20px; border: 0.5px solid #ccc; background: transparent; color: #777; font-size: 0.78rem; cursor: pointer; }
+    .fbtn.active { background: #1a1a18; color: #fff; border-color: #1a1a18; }
+    .fbtn:hover:not(.active) { background: #eeeee6; }
+
+    .toolbar-row2 { display: flex; gap: 8px; margin-bottom: 0.85rem; flex-wrap: wrap; align-items: center; }
+    .estab-btn { padding: 5px 14px; border-radius: 20px; border: 0.5px solid #ccc; background: transparent; color: #777; font-size: 0.78rem; cursor: pointer; }
+    .estab-btn.active { background: #374151; color: #fff; border-color: #374151; }
+    .estab-btn:hover:not(.active) { background: #eeeee6; }
+
+    .search-wrap { margin-left: auto; }
+    .search-wrap input { padding: 6px 12px; border-radius: 8px; border: 0.5px solid #ccc; font-size: 0.8rem; width: 220px; background: #fff; color: #1a1a18; outline: none; }
+    .search-wrap input:focus { border-color: #aaa; }
+
+    /* Dropdown de marca */
+    .marca-wrap { display: flex; align-items: center; gap: 8px; margin-bottom: 1rem; }
+    .marca-label { font-size: 0.72rem; color: #aaa; white-space: nowrap; }
+    .marca-dropdown { position: relative; display: inline-block; }
+    .marca-trigger { display: flex; align-items: center; gap: 8px; padding: 6px 14px; border-radius: 8px; border: 0.5px solid #ccc; background: #fff; font-size: 0.8rem; cursor: pointer; color: #1a1a18; min-width: 200px; justify-content: space-between; }
+    .marca-trigger:hover { border-color: #aaa; }
+    .marca-trigger.has-filter { border-color: #374151; background: #f8f8f4; }
+    .marca-trigger .chevron { font-size: 0.65rem; color: #aaa; transition: transform 0.15s; }
+    .marca-trigger.open .chevron { transform: rotate(180deg); }
+    .marca-panel { display: none; position: absolute; top: calc(100% + 4px); left: 0; background: #fff; border: 0.5px solid #e2e2d8; border-radius: 10px; box-shadow: 0 4px 16px rgba(0,0,0,0.08); z-index: 100; min-width: 240px; max-height: 320px; overflow: hidden; flex-direction: column; }
+    .marca-panel.open { display: flex; }
+    .marca-search { padding: 10px 12px; border-bottom: 0.5px solid #f0f0e8; }
+    .marca-search input { width: 100%; padding: 5px 10px; border-radius: 6px; border: 0.5px solid #e0e0d8; font-size: 0.78rem; outline: none; background: #fafaf6; color: #1a1a18; }
+    .marca-list { overflow-y: auto; flex: 1; }
+    .marca-item { display: flex; align-items: center; gap: 10px; padding: 8px 14px; font-size: 0.8rem; cursor: pointer; color: #1a1a18; }
+    .marca-item:hover { background: #fafaf6; }
+    .marca-item.selected { color: #374151; font-weight: 500; }
+    .marca-item input[type=checkbox] { accent-color: #374151; width: 14px; height: 14px; flex-shrink: 0; cursor: pointer; }
+    .marca-footer { padding: 8px 14px; border-top: 0.5px solid #f0f0e8; display: flex; justify-content: space-between; align-items: center; }
+    .marca-footer span { font-size: 0.72rem; color: #aaa; }
+    .marca-clear { font-size: 0.72rem; color: #B91C1C; cursor: pointer; background: none; border: none; padding: 0; }
+    .marca-clear:hover { text-decoration: underline; }
+
+    .table-card { background: #fff; border-radius: 12px; border: 0.5px solid #e2e2d8; overflow: hidden; }
+    .table-header { display: flex; align-items: center; justify-content: space-between; padding: 14px 18px 12px; border-bottom: 0.5px solid #eeeee6; }
+    .table-header span { font-size: 0.8rem; font-weight: 500; }
+    .table-header .count { font-size: 0.72rem; color: #bbb; font-weight: 400; }
+    .tbl-scroll { overflow-y: auto; max-height: calc(100vh - 380px); }
+    table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+    thead tr { background: #fafaf6; position: sticky; top: 0; z-index: 1; }
+    th { padding: 10px 16px; color: #aaa; font-weight: 500; text-align: left; border-bottom: 0.5px solid #eeeee6; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.04em; white-space: nowrap; cursor: pointer; user-select: none; }
+    th:hover { color: #666; }
+    th.sorted { color: #1a1a18; }
+    th .arrow { margin-left: 4px; opacity: 0.4; font-size: 0.65rem; }
+    th.sorted .arrow { opacity: 1; }
+    td { padding: 11px 16px; border-bottom: 0.5px solid #f4f3ee; vertical-align: middle; }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: #fdfdf9; }
+
+    tr.row-verde    td:first-child { border-left: 3px solid #3B6D11; }
+    tr.row-amarelo  td:first-child { border-left: 3px solid #CA8A04; }
+    tr.row-vermelho td:first-child { border-left: 3px solid #B91C1C; }
+    tr.row-aguardando td:first-child { border-left: 3px solid #D1D5DB; }
+
+    .ref { font-weight: 500; color: #1a1a18; font-size: 0.85rem; }
+    .cor-tag { font-size: 0.72rem; color: #aaa; }
+    .estab-pill { font-size: 0.7rem; padding: 2px 8px; border-radius: 10px; background: #f0f0e8; color: #666; white-space: nowrap; }
+    .marca-pill { font-size: 0.7rem; padding: 2px 8px; border-radius: 10px; background: #EEF2FF; color: #3730A3; white-space: nowrap; }
+
+    .pct-wrap { display: flex; align-items: center; gap: 8px; }
+    .pct-bar-bg { flex: 1; height: 4px; background: #f0f0e8; border-radius: 2px; overflow: hidden; min-width: 60px; }
+    .pct-bar { height: 100%; border-radius: 2px; }
+    .pct-val { font-size: 0.8rem; font-weight: 500; min-width: 38px; text-align: right; }
+    .status-cell { display: flex; align-items: center; font-size: 0.78rem; }
+    .status-dot { width: 7px; height: 7px; border-radius: 50%; display: inline-block; margin-right: 6px; flex-shrink: 0; }
+    .num { text-align: right; font-variant-numeric: tabular-nums; }
+    .date-cell { font-size: 0.75rem; color: #aaa; white-space: nowrap; }
+
+    .transfer-row td:first-child { border-left: 3px solid #2563EB; }
+    .arrow-cell { text-align: center; color: #2563EB; font-size: 1rem; }
+    .loja-origem  { font-size: 0.78rem; font-weight: 500; color: #B91C1C; }
+    .loja-destino { font-size: 0.78rem; font-weight: 500; color: #3B6D11; }
+    .loja-sub     { font-size: 0.7rem; color: #aaa; margin-top: 1px; }
+    .diff-badge { font-size: 0.75rem; font-weight: 500; padding: 2px 8px; border-radius: 8px; background: #EFF6FF; color: #2563EB; white-space: nowrap; }
+    .qtd-badge { font-size: 0.78rem; font-weight: 500; color: #2563EB; background: #EFF6FF; padding: 3px 10px; border-radius: 8px; white-space: nowrap; }
+
+    .tf-toolbar { display: flex; gap: 8px; margin-bottom: 0.85rem; flex-wrap: wrap; align-items: center; }
+    .tf-btn { padding: 5px 14px; border-radius: 20px; border: 0.5px solid #ccc; background: transparent; color: #777; font-size: 0.78rem; cursor: pointer; }
+    .tf-btn.active { background: #2563EB; color: #fff; border-color: #2563EB; }
+    .tf-btn:hover:not(.active) { background: #eeeee6; }
+
+    .empty-msg { text-align: center; padding: 2.5rem; color: #aaa; font-size: 0.82rem; }
+    .erro-msg   { text-align: center; padding: 2rem; color: #B91C1C; font-size: 0.82rem; }
+  </style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>Giro de Produtos — Lojas Bade</h1>
+    <p class="subtitle">Coleção Inverno 2026 · A partir de 15/03/2026</p>
+  </div>
+  <div style="display:flex;align-items:center;gap:12px;">
+    <span id="status"></span>
+    <button class="btn-refresh" id="btn-refresh" onclick="loadAll()">↻ Atualizar</button>
+    <a href="/logout" style="padding:7px 16px;border-radius:8px;border:0.5px solid #ccc;background:#fff;font-size:0.8rem;color:#B91C1C;text-decoration:none;">Sair</a>
+  </div>
+</header>
+
+<div class="tabs">
+  <button class="tab active" onclick="switchTab('giro',this)">
+    Giro de Estoque <span class="tab-badge" id="badge-giro">—</span>
+  </button>
+  <button class="tab" onclick="switchTab('transferencias',this)">
+    Sugestões de Transferência <span class="tab-badge" id="badge-transf">—</span>
+  </button>
+</div>
+
+<!-- ABA GIRO -->
+<div class="tab-panel active" id="panel-giro">
+  <div class="metrics">
+    <div class="mcard">
+      <div class="lbl">Total</div>
+      <div class="val" id="m-total">—</div>
+    </div>
+    <div class="mcard" style="border-left:3px solid #3B6D11">
+      <div class="lbl" style="color:#3B6D11">Alta &gt;75%</div>
+      <div class="val" id="m-verde" style="color:#3B6D11">—</div>
+    </div>
+    <div class="mcard" style="border-left:3px solid #CA8A04">
+      <div class="lbl" style="color:#CA8A04">Média 50–75%</div>
+      <div class="val" id="m-amarelo" style="color:#CA8A04">—</div>
+    </div>
+    <div class="mcard" style="border-left:3px solid #B91C1C">
+      <div class="lbl" style="color:#B91C1C">Baixa &lt;50%</div>
+      <div class="val" id="m-vermelho" style="color:#B91C1C">—</div>
+    </div>
+  </div>
+
+  <div class="toolbar">
+    <span style="font-size:0.72rem;color:#aaa;margin-right:4px;">Rotatividade</span>
+    <button class="fbtn active" onclick="setFilter('todos',this)">Todos</button>
+    <button class="fbtn" onclick="setFilter('verde',this)">Alta &gt;75%</button>
+    <button class="fbtn" onclick="setFilter('amarelo',this)">Média 50–75%</button>
+    <button class="fbtn" onclick="setFilter('vermelho',this)">Baixa &lt;50%</button>
+    <button class="fbtn" onclick="setFilter('aguardando',this)">Aguardando</button>
+    <div class="search-wrap">
+      <input type="text" id="search" placeholder="Buscar referência, marca ou cor..." oninput="renderGiro()"/>
+    </div>
+  </div>
+
+  <div style="display:flex;gap:1rem;align-items:center;margin-bottom:1rem;flex-wrap:wrap;">
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+      <span style="font-size:0.72rem;color:#aaa;">Estabelecimento</span>
+      <button class="estab-btn active" onclick="setEstab('todos',this)">Todos</button>
+      <button class="estab-btn" onclick="setEstab(1,this)">Viasul</button>
+      <button class="estab-btn" onclick="setEstab(2,this)">Aviação</button>
+      <button class="estab-btn" onclick="setEstab(3,this)">Centro</button>
+      <button class="estab-btn" onclick="setEstab(4,this)">Gressler</button>
+      <button class="estab-btn" onclick="setEstab(5,this)">Arroio do Meio</button>
+      <button class="estab-btn" onclick="setEstab(7,this)">Esportes</button>
+    </div>
+
+    <div class="marca-wrap" style="margin-left:auto;">
+      <span class="marca-label">Marca</span>
+      <div class="marca-dropdown" id="dropdown-giro">
+        <div class="marca-trigger" id="trigger-giro" onclick="toggleDropdown('giro')">
+          <span id="trigger-giro-label">Todas as marcas</span>
+          <span class="chevron">▼</span>
+        </div>
+        <div class="marca-panel" id="panel-marca-giro">
+          <div class="marca-search">
+            <input type="text" placeholder="Buscar marca..." oninput="filtrarListaMarca('giro', this.value)" id="marca-search-giro"/>
+          </div>
+          <div class="marca-list" id="marca-list-giro"></div>
+          <div class="marca-footer">
+            <span id="marca-count-giro">0 marcas</span>
+            <button class="marca-clear" onclick="limparMarcas('giro')">Limpar seleção</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="table-card">
+    <div class="table-header">
+      <span>Referências</span>
+      <span class="count" id="tbl-count"></span>
+    </div>
+    <div class="tbl-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th onclick="sortGiro('codigo')" id="th-codigo">Referência <span class="arrow" id="arr-codigo">↕</span></th>
+            <th onclick="sortGiro('marca')" id="th-marca">Marca <span class="arrow" id="arr-marca">↕</span></th>
+            <th onclick="sortGiro('descricao')" id="th-descricao">Descrição <span class="arrow" id="arr-descricao">↕</span></th>
+            <th onclick="sortGiro('cor')" id="th-cor">Cor <span class="arrow" id="arr-cor">↕</span></th>
+            <th onclick="sortGiro('estab_nome')" id="th-estab_nome">Estabelecimento <span class="arrow" id="arr-estab_nome">↕</span></th>
+            <th onclick="sortGiro('qtd_vendida')" id="th-qtd_vendida" style="text-align:right">Vendas <span class="arrow" id="arr-qtd_vendida">↕</span></th>
+            <th onclick="sortGiro('estoque')" id="th-estoque" style="text-align:right">Estoque <span class="arrow" id="arr-estoque">↕</span></th>
+            <th onclick="sortGiro('pct_vendido')" id="th-pct_vendido">% Vendido <span class="arrow" id="arr-pct_vendido">↓</span></th>
+            <th onclick="sortGiro('ult_entrada')" id="th-ult_entrada">Últ. Entrada <span class="arrow" id="arr-ult_entrada">↕</span></th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody id="table-body"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ABA TRANSFERÊNCIAS -->
+<div class="tab-panel" id="panel-transferencias">
+  <div class="metrics">
+    <div class="mcard" style="border-left:3px solid #2563EB">
+      <div class="lbl" style="color:#2563EB">Total de sugestões</div>
+      <div class="val" id="t-total" style="color:#2563EB">—</div>
+    </div>
+    <div class="mcard">
+      <div class="lbl">Referências envolvidas</div>
+      <div class="val" id="t-refs">—</div>
+    </div>
+    <div class="mcard">
+      <div class="lbl">Lojas origem</div>
+      <div class="val" id="t-origens">—</div>
+    </div>
+    <div class="mcard">
+      <div class="lbl">Lojas destino</div>
+      <div class="val" id="t-destinos">—</div>
+    </div>
+  </div>
+
+  <div style="display:flex;gap:1rem;align-items:center;margin-bottom:1rem;flex-wrap:wrap;">
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+      <span style="font-size:0.72rem;color:#aaa;">Filtrar origem</span>
+      <button class="tf-btn active" onclick="setTfFiltro('todos',this)">Todas</button>
+      <button class="tf-btn" onclick="setTfFiltro(1,this)">Viasul</button>
+      <button class="tf-btn" onclick="setTfFiltro(2,this)">Aviação</button>
+      <button class="tf-btn" onclick="setTfFiltro(3,this)">Centro</button>
+      <button class="tf-btn" onclick="setTfFiltro(4,this)">Gressler</button>
+      <button class="tf-btn" onclick="setTfFiltro(5,this)">Arroio do Meio</button>
+      <button class="tf-btn" onclick="setTfFiltro(7,this)">Esportes</button>
+    </div>
+
+    <div class="marca-wrap" style="margin-left:auto;">
+      <span class="marca-label">Marca</span>
+      <div class="marca-dropdown" id="dropdown-tf">
+        <div class="marca-trigger" id="trigger-tf" onclick="toggleDropdown('tf')">
+          <span id="trigger-tf-label">Todas as marcas</span>
+          <span class="chevron">▼</span>
+        </div>
+        <div class="marca-panel" id="panel-marca-tf">
+          <div class="marca-search">
+            <input type="text" placeholder="Buscar marca..." oninput="filtrarListaMarca('tf', this.value)" id="marca-search-tf"/>
+          </div>
+          <div class="marca-list" id="marca-list-tf"></div>
+          <div class="marca-footer">
+            <span id="marca-count-tf">0 marcas</span>
+            <button class="marca-clear" onclick="limparMarcas('tf')">Limpar seleção</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="search-wrap">
+      <input type="text" id="search-tf" placeholder="Buscar referência ou marca..." oninput="renderTransferencias()"/>
+    </div>
+  </div>
+
+  <div class="table-card">
+    <div class="table-header">
+      <span>Sugestões de transferência</span>
+      <span class="count" id="tf-count"></span>
+    </div>
+    <div class="tbl-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th onclick="sortTf('codigo')" id="tth-codigo">Referência <span class="arrow" id="tarr-codigo">↕</span></th>
+            <th onclick="sortTf('marca')" id="tth-marca">Marca <span class="arrow" id="tarr-marca">↕</span></th>
+            <th onclick="sortTf('descricao')" id="tth-descricao">Descrição <span class="arrow" id="tarr-descricao">↕</span></th>
+            <th onclick="sortTf('cor')" id="tth-cor">Cor <span class="arrow" id="tarr-cor">↕</span></th>
+            <th onclick="sortTf('origem_nome')" id="tth-origem_nome">Origem <span class="arrow" id="tarr-origem_nome">↕</span></th>
+            <th style="text-align:center">→</th>
+            <th onclick="sortTf('destino_nome')" id="tth-destino_nome">Destino <span class="arrow" id="tarr-destino_nome">↕</span></th>
+            <th onclick="sortTf('diff_pct')" id="tth-diff_pct">Diferença % <span class="arrow" id="tarr-diff_pct">↓</span></th>
+            <th onclick="sortTf('origem_dias')" id="tth-origem_dias" style="text-align:center">Dias na origem <span class="arrow" id="tarr-origem_dias">↕</span></th>
+            <th onclick="sortTf('qtd_sugerida')" id="tth-qtd_sugerida" style="text-align:center">Qtd sugerida <span class="arrow" id="tarr-qtd_sugerida">↕</span></th>
+            <th onclick="sortTf('prioridade')" id="tth-prioridade">Prioridade <span class="arrow" id="tarr-prioridade">↓</span></th>
+          </tr>
+        </thead>
+        <tbody id="tf-body"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script>
+let giroData = [], transfData = [];
+let currentFilter = 'todos', currentEstab = 'todos';
+let marcasSelecionadas = { giro: new Set(), tf: new Set() };
+let giroSort = { col:'pct_vendido', dir:'asc' };
+let tfFilter = 'todos', tfSort = { col:'prioridade', dir:'desc' };
+let todasMarcas = [];
+
+// ─── Utilitários ─────────────────────────────────────────────────────────────
+function semaforo(pct, elegivel) {
+  if (!elegivel) return { cor:'#9CA3AF', label:'Aguardando', nivel:'aguardando' };
+  if (pct >= 75)  return { cor:'#3B6D11', label:'Alta',       nivel:'verde'      };
+  if (pct >= 50)  return { cor:'#CA8A04', label:'Média',      nivel:'amarelo'    };
+  return              { cor:'#B91C1C', label:'Baixa',      nivel:'vermelho'   };
+}
+function formatDate(d) {
+  if (!d) return '—';
+  return String(d).substring(0,10).split('-').reverse().join('/');
+}
+function sorted(data, col, dir) {
+  return [...data].sort((a,b) => {
+    let va=a[col], vb=b[col];
+    if (typeof va==='string') va=va.toLowerCase();
+    if (typeof vb==='string') vb=vb.toLowerCase();
+    if (va==null) va=''; if (vb==null) vb='';
+    if (va<vb) return dir==='asc'?-1:1;
+    if (va>vb) return dir==='asc'?1:-1;
+    return 0;
+  });
+}
+function prioridadeBadge(valor, maxVal) {
+  const pct = maxVal>0 ? valor/maxVal : 0;
+  if (pct>=0.6) return '<span style="background:#FEE2E2;color:#B91C1C;font-size:0.75rem;font-weight:500;padding:3px 10px;border-radius:8px;">Alta</span>';
+  if (pct>=0.3) return '<span style="background:#FEF3C7;color:#92400E;font-size:0.75rem;font-weight:500;padding:3px 10px;border-radius:8px;">Média</span>';
+  return '<span style="background:#DCFCE7;color:#166534;font-size:0.75rem;font-weight:500;padding:3px 10px;border-radius:8px;">Baixa</span>';
+}
+
+// ─── Dropdown de Marca ───────────────────────────────────────────────────────
+function toggleDropdown(id) {
+  const panel = document.getElementById('panel-marca-' + id);
+  const trigger = document.getElementById('trigger-' + id);
+  const isOpen = panel.classList.contains('open');
+  // Fecha todos
+  document.querySelectorAll('.marca-panel').forEach(p => p.classList.remove('open'));
+  document.querySelectorAll('.marca-trigger').forEach(t => t.classList.remove('open'));
+  if (!isOpen) {
+    panel.classList.add('open');
+    trigger.classList.add('open');
+    document.getElementById('marca-search-' + id).focus();
+  }
+}
+
+document.addEventListener('click', e => {
+  if (!e.target.closest('.marca-dropdown')) {
+    document.querySelectorAll('.marca-panel').forEach(p => p.classList.remove('open'));
+    document.querySelectorAll('.marca-trigger').forEach(t => t.classList.remove('open'));
+  }
+});
+
+function popularDropdownMarca(id, marcas) {
+  renderListaMarca(id, marcas, '');
+  document.getElementById('marca-count-' + id).textContent = marcas.length + ' marcas';
+}
+
+function renderListaMarca(id, marcas, filtro) {
+  const lista = document.getElementById('marca-list-' + id);
+  const selecionadas = marcasSelecionadas[id];
+  const visiveis = marcas.filter(m => !filtro || m.toLowerCase().includes(filtro.toLowerCase()));
+  lista.innerHTML = visiveis.map(m => `
+    <div class="marca-item ${selecionadas.has(m)?'selected':''}" onclick="toggleMarca('${id}','${m.replace(/'/g,"\\'")}',this)">
+      <input type="checkbox" ${selecionadas.has(m)?'checked':''} onclick="event.stopPropagation();toggleMarca('${id}','${m.replace(/'/g,"\\'")}',this.parentElement)"/>
+      <span>${m}</span>
+    </div>
+  `).join('');
+}
+
+function filtrarListaMarca(id, valor) {
+  renderListaMarca(id, todasMarcas, valor);
+}
+
+function toggleMarca(id, marca, el) {
+  const s = marcasSelecionadas[id];
+  if (s.has(marca)) s.delete(marca);
+  else s.add(marca);
+  renderListaMarca(id, todasMarcas, document.getElementById('marca-search-'+id).value);
+  atualizarTriggerLabel(id);
+  if (id==='giro') { updateMetrics(); renderGiro(); }
+  else { renderTransferencias(); }
+}
+
+function atualizarTriggerLabel(id) {
+  const s = marcasSelecionadas[id];
+  const el = document.getElementById('trigger-' + id + '-label');
+  const trigger = document.getElementById('trigger-' + id);
+  if (s.size === 0) {
+    el.textContent = 'Todas as marcas';
+    trigger.classList.remove('has-filter');
+  } else if (s.size === 1) {
+    el.textContent = [...s][0];
+    trigger.classList.add('has-filter');
+  } else {
+    el.textContent = s.size + ' marcas selecionadas';
+    trigger.classList.add('has-filter');
+  }
+}
+
+function limparMarcas(id) {
+  marcasSelecionadas[id].clear();
+  renderListaMarca(id, todasMarcas, '');
+  document.getElementById('marca-search-'+id).value = '';
+  atualizarTriggerLabel(id);
+  if (id==='giro') { updateMetrics(); renderGiro(); }
+  else { renderTransferencias(); }
+}
+
+// ─── Tabs ────────────────────────────────────────────────────────────────────
+function switchTab(name, btn) {
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('panel-'+name).classList.add('active');
+}
+
+// ─── Load ────────────────────────────────────────────────────────────────────
+async function loadAll() {
+  document.getElementById('status').textContent = 'Carregando...';
+  document.getElementById('btn-refresh').disabled = true;
+  try {
+    const [r1, r2] = await Promise.all([fetch('/api/giro'), fetch('/api/transferencias')]);
+    const j1 = await r1.json();
+    const j2 = await r2.json();
+    if (j1.erro) throw new Error(j1.erro);
+    if (j2.erro) throw new Error(j2.erro);
+    giroData   = j1;
+    transfData = j2;
+    todasMarcas = [...new Set(giroData.map(d=>d.marca).filter(m=>m&&m!=='—'))].sort();
+    popularDropdownMarca('giro', todasMarcas);
+    popularDropdownMarca('tf',   todasMarcas);
+    document.getElementById('badge-giro').textContent   = giroData.length;
+    document.getElementById('badge-transf').textContent = transfData.length;
+    document.getElementById('status').textContent = 'MySQL · ' + new Date().toLocaleTimeString('pt-BR');
+  } catch(e) {
+    document.getElementById('status').textContent = 'Erro: ' + e.message;
+    document.getElementById('btn-refresh').disabled = false;
+    return;
+  }
+  document.getElementById('btn-refresh').disabled = false;
+  updateMetrics();
+  renderGiro();
+  updateTransfMetrics();
+  renderTransferencias();
+}
+
+// ─── ABA GIRO ────────────────────────────────────────────────────────────────
+function updateMetrics() {
+  const base = giroData.filter(d => {
+    const mE = currentEstab==='todos' || d.estab===currentEstab;
+    const mM = marcasSelecionadas.giro.size===0 || marcasSelecionadas.giro.has(d.marca);
+    return mE && mM;
+  });
+  document.getElementById('m-total').textContent    = base.length;
+  document.getElementById('m-verde').textContent    = base.filter(d=>semaforo(d.pct_vendido,d.elegivel).nivel==='verde').length;
+  document.getElementById('m-amarelo').textContent  = base.filter(d=>semaforo(d.pct_vendido,d.elegivel).nivel==='amarelo').length;
+  document.getElementById('m-vermelho').textContent = base.filter(d=>semaforo(d.pct_vendido,d.elegivel).nivel==='vermelho').length;
+}
+
+function getFilteredGiro() {
+  const q = (document.getElementById('search').value||'').toLowerCase();
+  return giroData.filter(d => {
+    const mF = currentFilter==='todos' || semaforo(d.pct_vendido,d.elegivel).nivel===currentFilter;
+    const mE = currentEstab==='todos'  || d.estab===currentEstab;
+    const mM = marcasSelecionadas.giro.size===0 || marcasSelecionadas.giro.has(d.marca);
+    const mQ = !q || d.codigo.toLowerCase().includes(q) || d.cor.toLowerCase().includes(q)
+                  || d.estab_nome.toLowerCase().includes(q) || d.marca.toLowerCase().includes(q)
+                  || d.descricao.toLowerCase().includes(q);
+    return mF && mE && mM && mQ;
+  });
+}
+
+function renderGiro() {
+  const data = sorted(getFilteredGiro(), giroSort.col, giroSort.dir);
+  document.getElementById('tbl-count').textContent = data.length + ' itens';
+  if (!data.length) {
+    document.getElementById('table-body').innerHTML = '<tr><td colspan="10" class="empty-msg">Nenhum produto encontrado</td></tr>';
+    return;
+  }
+  document.getElementById('table-body').innerHTML = data.map(d => {
+    const s  = semaforo(d.pct_vendido, d.elegivel);
+    const bw = Math.min(100, d.pct_vendido).toFixed(1);
+    return `<tr class="row-${s.nivel}">
+      <td><span class="ref">${d.codigo}</span></td>
+      <td><span class="marca-pill">${d.marca}</span></td>
+      <td style="font-size:0.82rem">${d.descricao}</td>
+      <td><span class="cor-tag">${d.cor}</span></td>
+      <td><span class="estab-pill">${d.estab_nome}</span></td>
+      <td class="num">${d.qtd_vendida.toLocaleString('pt-BR')}</td>
+      <td class="num">${d.estoque.toLocaleString('pt-BR')}</td>
+      <td>
+        <div class="pct-wrap">
+          <div class="pct-bar-bg"><div class="pct-bar" style="width:${bw}%;background:${s.cor}"></div></div>
+          <span class="pct-val" style="color:${s.cor}">${d.pct_vendido.toFixed(1)}%</span>
+        </div>
+      </td>
+      <td class="date-cell">${formatDate(d.ult_entrada)}</td>
+      <td><div class="status-cell"><span class="status-dot" style="background:${s.cor}"></span><span style="color:${s.cor}">${s.label}</span></div></td>
+    </tr>`;
+  }).join('');
+}
+
+function sortGiro(col) {
+  if (giroSort.col===col) giroSort.dir=giroSort.dir==='asc'?'desc':'asc';
+  else { giroSort.col=col; giroSort.dir='asc'; }
+  document.querySelectorAll('[id^="th-"]').forEach(t=>t.classList.remove('sorted'));
+  document.querySelectorAll('[id^="arr-"]').forEach(el=>el.textContent='↕');
+  document.getElementById('th-'+col).classList.add('sorted');
+  document.getElementById('arr-'+col).textContent=giroSort.dir==='asc'?'↓':'↑';
+  renderGiro();
+}
+function setFilter(f, btn) {
+  currentFilter=f;
+  document.querySelectorAll('.fbtn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  updateMetrics(); renderGiro();
+}
+function setEstab(e, btn) {
+  currentEstab=e==='todos'?'todos':parseInt(e);
+  document.querySelectorAll('.estab-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  updateMetrics(); renderGiro();
+}
+
+// ─── ABA TRANSFERÊNCIAS ───────────────────────────────────────────────────────
+function updateTransfMetrics() {
+  const refs    = new Set(transfData.map(t=>t.codigo+'|'+t.cor));
+  const origens = new Set(transfData.map(t=>t.origem_estab));
+  const dests   = new Set(transfData.map(t=>t.destino_estab));
+  document.getElementById('t-total').textContent   = transfData.length;
+  document.getElementById('t-refs').textContent    = refs.size;
+  document.getElementById('t-origens').textContent  = origens.size;
+  document.getElementById('t-destinos').textContent = dests.size;
+}
+
+function getFilteredTf() {
+  const q = (document.getElementById('search-tf').value||'').toLowerCase();
+  return transfData.filter(t => {
+    const mE = tfFilter==='todos' || t.origem_estab===tfFilter;
+    const mM = marcasSelecionadas.tf.size===0 || marcasSelecionadas.tf.has(t.marca);
+    const mQ = !q || t.codigo.toLowerCase().includes(q) || t.cor.toLowerCase().includes(q)
+                  || t.origem_nome.toLowerCase().includes(q) || t.destino_nome.toLowerCase().includes(q)
+                  || (t.marca||'').toLowerCase().includes(q);
+    return mE && mM && mQ;
+  });
+}
+
+function renderTransferencias() {
+  const data = sorted(getFilteredTf(), tfSort.col, tfSort.dir);
+  const maxP = Math.max(1, ...data.map(t=>t.prioridade));
+  document.getElementById('tf-count').textContent = data.length + ' sugestões';
+  if (!data.length) {
+    document.getElementById('tf-body').innerHTML = '<tr><td colspan="11" class="empty-msg">Nenhuma sugestão encontrada</td></tr>';
+    return;
+  }
+  document.getElementById('tf-body').innerHTML = data.map(t => `<tr class="transfer-row">
+    <td><span class="ref">${t.codigo}</span></td>
+    <td><span class="marca-pill">${t.marca||'—'}</span></td>
+    <td style="font-size:0.82rem">${t.descricao}</td>
+    <td><span class="cor-tag">${t.cor}</span></td>
+    <td><div class="loja-origem">${t.origem_nome}</div><div class="loja-sub">Estoque: ${t.origem_estoque} · Giro: ${t.origem_pct.toFixed(1)}%</div></td>
+    <td class="arrow-cell">→</td>
+    <td><div class="loja-destino">${t.destino_nome}</div><div class="loja-sub">Estoque: ${t.destino_estoque} · Giro: ${t.destino_pct.toFixed(1)}%</div></td>
+    <td><span class="diff-badge">+${t.diff_pct.toFixed(1)}%</span></td>
+    <td style="text-align:center"><span style="font-size:0.78rem;color:#6B7280">${t.origem_dias} dias</span></td>
+    <td style="text-align:center"><span class="qtd-badge">${t.qtd_sugerida} pç</span></td>
+    <td>${prioridadeBadge(t.prioridade, maxP)}</td>
+  </tr>`).join('');
+}
+
+function sortTf(col) {
+  if (tfSort.col===col) tfSort.dir=tfSort.dir==='asc'?'desc':'asc';
+  else { tfSort.col=col; tfSort.dir='desc'; }
+  document.querySelectorAll('[id^="tth-"]').forEach(t=>t.classList.remove('sorted'));
+  document.querySelectorAll('[id^="tarr-"]').forEach(el=>el.textContent='↕');
+  document.getElementById('tth-'+col).classList.add('sorted');
+  document.getElementById('tarr-'+col).textContent=tfSort.dir==='asc'?'↓':'↑';
+  renderTransferencias();
+}
+function setTfFiltro(e, btn) {
+  tfFilter=e==='todos'?'todos':parseInt(e);
+  document.querySelectorAll('.tf-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  renderTransferencias();
+}
+
+loadAll();
+</script>
+</body>
+</html>
