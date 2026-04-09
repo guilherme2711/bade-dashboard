@@ -25,11 +25,14 @@ DB_CONFIG = {
 ESTABS = {
     1: 'Bade Viasul',
     2: 'Bade Aviação',
-    3: 'Bade Centro',
+    3: 'Centro / Esportes',  # estab 3 e 7 mesclados
     4: 'Bade Gressler',
     5: 'Bade Arroio do Meio',
-    7: 'Bade Esportes',
 }
+
+# Estabs que serão mesclados em um único
+ESTAB_MESCLAR_EM   = 3   # estab que representa o grupo (e dono do estoque)
+ESTAB_MESCLAR_DE   = 7   # estab que será absorvido (soma vendas, ignora estoque)
 
 DATAREF = '2026-03-15'
 
@@ -127,60 +130,160 @@ def dias_desde_entrada(ult_entrada):
 
 def fetch_giro():
     conn = mysql.connector.connect(**DB_CONFIG)
-    cursor = conn.cursor(dictionary=True)
-    cursor.execute(f"SET @DATAREF := '{DATAREF}'")
-    cursor.execute(SQL_GIRO)
-    rows = cursor.fetchall()
-    cursor.close()
-    conn.close()
-    result = []
+    try:
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute(f"SET @DATAREF := '{DATAREF}'")
+        cursor.execute(SQL_GIRO)
+        rows = cursor.fetchall()
+        cursor.close()
+    finally:
+        conn.close()
+
+    # ── Primeira passagem: monta registros individuais ──────────────────────
+    brutos = []
     for r in rows:
-        pct  = float(r['pct_vendido']) if r['pct_vendido'] is not None else 0.0
+        pct   = float(r['pct_vendido']) if r['pct_vendido'] is not None else 0.0
         estab = int(r['estab'])
         ult   = r['ult_entrada']
         dias  = dias_desde_entrada(ult)
-        result.append({
+        brutos.append({
             'codigo':       str(r['codigo']),
             'descricao':    str(r['descricao']) if r['descricao'] else '—',
             'cor':          str(r['cor']) if r['cor'] else '—',
             'marca':        str(r['marca']) if r['marca'] else '—',
             'estab':        estab,
-            'estab_nome':   ESTABS.get(estab, f'Estab {estab}'),
             'qtd_vendida':  int(r['qtd_vendida']),
             'estoque':      int(r['estoque']),
             'ult_entrada':  str(ult) if ult else None,
             'dias_estoque': dias,
-            'elegivel':     dias is not None and dias >= 15,
-            'pct_vendido':  round(pct, 1),
         })
+
+    # ── Mesclagem: Centro (3) + Esportes (7) ────────────────────────────────
+    # Agrupa por codigo+cor+estab para facilitar a mesclagem
+    from collections import defaultdict
+    por_chave = defaultdict(list)
+    for b in brutos:
+        # Estab 7 é renomeado para 3 para agrupar junto
+        estab_key = ESTAB_MESCLAR_EM if b['estab'] == ESTAB_MESCLAR_DE else b['estab']
+        por_chave[(b['codigo'], b['cor'], estab_key)].append(b)
+
+    result = []
+    for (codigo, cor, estab), itens in por_chave.items():
+        # Vendas: soma de todos os itens do grupo
+        qtd_vendida = sum(i['qtd_vendida'] for i in itens)
+
+        # Estoque:
+        # - Para Centro/Esportes (estab 3): apenas do estab 3, ignora estab 7
+        # - Para todas as outras lojas: usa o estoque normalmente
+        if estab == ESTAB_MESCLAR_EM:
+            estoque = sum(i['estoque'] for i in itens if i['estab'] == ESTAB_MESCLAR_EM)
+        else:
+            estoque = sum(i['estoque'] for i in itens)
+
+        # Última entrada: a mais recente
+        datas = [i['ult_entrada'] for i in itens if i['ult_entrada']]
+        ult_entrada = max(datas) if datas else None
+        dias = dias_desde_entrada(ult_entrada)
+
+        # % vendido recalculado
+        total = qtd_vendida + estoque
+        pct = round((qtd_vendida / total * 100), 1) if total > 0 else 0.0
+
+        result.append({
+            'codigo':       codigo,
+            'descricao':    itens[0]['descricao'],
+            'cor':          cor,
+            'marca':        itens[0]['marca'],
+            'estab':        estab,
+            'estab_nome':   ESTABS.get(estab, f'Estab {estab}'),
+            'qtd_vendida':  qtd_vendida,
+            'estoque':      estoque,
+            'ult_entrada':  ult_entrada,
+            'dias_estoque': dias,
+            'elegivel':     dias is not None and dias >= 15,
+            'pct_vendido':  pct,
+        })
+
     return result
 
 def calcular_transferencias(dados):
     from collections import defaultdict
-    DIAS_MINIMOS = 15
-    DIFF_PCT_MIN = 20.0
+
+    DIAS_MINIMOS    = 15
+    DIFF_PCT_MIN    = 20.0
+    ESTAB_PRINCIPAL = ESTAB_MESCLAR_EM  # Centro/Esportes = estab 3
+    RESERVA_CENTRO  = 1.5  # Centro deve manter 50% a mais que a média das outras
+
     grupos = defaultdict(list)
     for d in dados:
         grupos[(d['codigo'], d['cor'])].append(d)
+
     sugestoes = []
     vistos = set()
+
     for (codigo, cor), lojas in grupos.items():
-        if len(lojas) < 2: continue
+        if len(lojas) < 2:
+            continue
+
+        # Calcula média de estoque das lojas que NÃO são o Centro
+        outras_lojas   = [l for l in lojas if l['estab'] != ESTAB_PRINCIPAL]
+        centro         = next((l for l in lojas if l['estab'] == ESTAB_PRINCIPAL), None)
+
+        # Só calcula reserva se houver outras lojas para comparar
+        if outras_lojas:
+            media_outras   = sum(l['estoque'] for l in outras_lojas) / len(outras_lojas)
+            reserva_centro = round(media_outras * RESERVA_CENTRO)
+        else:
+            media_outras   = 0
+            reserva_centro = 0
+
         for origem in lojas:
             dias = origem.get('dias_estoque')
-            if dias is None or dias < DIAS_MINIMOS: continue
+            if dias is None or dias < DIAS_MINIMOS:
+                continue
+
             for destino in lojas:
-                if origem['estab'] == destino['estab']: continue
+                if origem['estab'] == destino['estab']:
+                    continue
+
                 chave = (codigo, cor, origem['estab'], destino['estab'])
-                if chave in vistos: continue
+                if chave in vistos:
+                    continue
+
                 diff_pct     = destino['pct_vendido'] - origem['pct_vendido']
                 diff_estoque = origem['estoque'] - destino['estoque']
-                if diff_pct <= 0: continue
+
+                if diff_pct <= 0:
+                    continue
+
                 criterio_pct     = diff_pct >= DIFF_PCT_MIN
                 criterio_estoque = diff_estoque >= 1 and origem['pct_vendido'] < destino['pct_vendido']
-                if not (criterio_pct or criterio_estoque): continue
+
+                if not (criterio_pct or criterio_estoque):
+                    continue
+
+                # ── Regra especial Centro/Esportes como ORIGEM ──────────────
+                if origem['estab'] == ESTAB_PRINCIPAL:
+                    excecao_giro = (origem['pct_vendido'] < 30 and 
+                                   destino['pct_vendido'] > 70 and
+                                   origem['estoque'] > reserva_centro)  # só se tiver excedente real
+
+                    if not excecao_giro:
+                        estoque_disponivel = origem['estoque'] - reserva_centro
+                        if estoque_disponivel <= 0:
+                            continue
+                        qtd_sugerida = max(1, estoque_disponivel // 2)
+                    else:
+                        excedente = origem['estoque'] - reserva_centro
+                        qtd_sugerida = max(1, excedente // 2)
+                else:
+                    # ── Outras lojas: lógica normal ─────────────────────────
+                    qtd_sugerida = max(1, diff_estoque // 2) if diff_estoque > 0 else 1
+
                 vistos.add(chave)
-                qtd_sugerida = max(1, diff_estoque // 2) if diff_estoque > 0 else 1
+
+                prioridade = round(diff_pct + max(0, diff_estoque), 1)
+
                 sugestoes.append({
                     'codigo':          codigo,
                     'descricao':       origem.get('descricao', '—'),
@@ -197,8 +300,11 @@ def calcular_transferencias(dados):
                     'destino_pct':     destino['pct_vendido'],
                     'diff_pct':        round(diff_pct, 1),
                     'qtd_sugerida':    int(qtd_sugerida),
-                    'prioridade':      round(diff_pct + max(0, diff_estoque), 1),
+                    'prioridade':      prioridade,
+                    'reserva_centro':  reserva_centro if origem['estab'] == ESTAB_PRINCIPAL else None,
+                    'media_outras':    round(media_outras, 1) if origem['estab'] == ESTAB_PRINCIPAL else None,
                 })
+
     sugestoes.sort(key=lambda x: x['prioridade'], reverse=True)
     return sugestoes
 
@@ -226,6 +332,106 @@ def index():
     if not logado():
         return redirect('/login')
     return send_from_directory('static', 'index.html')
+
+@app.route('/api/debug_ref/<path:codigo>')
+def debug_ref(codigo):
+    if not logado():
+        return jsonify({'erro': 'Não autorizado'}), 401
+    try:
+        dados = fetch_giro()
+        itens = [d for d in dados if d['codigo'].upper() == codigo.upper()]
+        if not itens:
+            return jsonify({'erro': f'Referência {codigo} não encontrada'})
+        
+        # Calcula a reserva para cada cor encontrada
+        from collections import defaultdict
+        grupos = defaultdict(list)
+        for d in itens:
+            grupos[d['cor']].append(d)
+        
+        resultado = {}
+        for cor, lojas in grupos.items():
+            outras = [l for l in lojas if l['estab'] != ESTAB_MESCLAR_EM]
+            centro = next((l for l in lojas if l['estab'] == ESTAB_MESCLAR_EM), None)
+            media_outras = (sum(l['estoque'] for l in outras) / len(outras)) if outras else 0
+            reserva = round(media_outras * 1.5)
+            resultado[cor] = {
+                'lojas': lojas,
+                'media_estoque_outras': round(media_outras, 2),
+                'reserva_calculada_50pct': reserva,
+                'centro_estoque': centro['estoque'] if centro else 0,
+                'excedente_disponivel': max(0, (centro['estoque'] if centro else 0) - reserva),
+            }
+        return jsonify(resultado)
+    except Exception as e:
+        return jsonify({'erro': str(e)}), 500
+
+
+@app.route('/api/debug')
+def debug():
+    if not logado():
+        return jsonify({'erro': 'Não autorizado'}), 401
+    try:
+        conn = mysql.connector.connect(**DB_CONFIG)
+        try:
+            cursor = conn.cursor(dictionary=True)
+            cursor.execute(f"SET @DATAREF := '{DATAREF}'")
+            cursor.execute(SQL_GIRO)
+            rows = cursor.fetchall()
+            cursor.close()
+        finally:
+            conn.close()
+        from collections import defaultdict
+        por_estab = defaultdict(list)
+        for r in rows:
+            por_estab[int(r['estab'])].append({
+                'codigo':      str(r['codigo']),
+                'cor':         str(r['cor']) if r['cor'] else '—',
+                'qtd_vendida': int(r['qtd_vendida']),
+                'estoque':     int(r['estoque']),
+                'pct_vendido': round(float(r['pct_vendido']) if r['pct_vendido'] else 0, 1),
+            })
+        resumo = {}
+        for estab, itens in sorted(por_estab.items()):
+            resumo[f'estab_{estab}'] = {
+                'total_registros': len(itens),
+                'primeiros_3': itens[:3]
+            }
+        return jsonify(resumo)
+    except Exception as e:
+        return jsonify({'erro': str(e)}), 500
+
+
+@app.route('/api/debug2')
+def debug2():
+    if not logado():
+        return jsonify({'erro': 'Não autorizado'}), 401
+    try:
+        dados = fetch_giro()
+        from collections import defaultdict
+        por_estab = defaultdict(list)
+        for d in dados:
+            por_estab[d['estab_nome']].append({
+                'codigo':      d['codigo'],
+                'cor':         d['cor'],
+                'qtd_vendida': d['qtd_vendida'],
+                'estoque':     d['estoque'],
+                'pct_vendido': d['pct_vendido'],
+            })
+        resumo = {}
+        for estab, itens in sorted(por_estab.items()):
+            com_venda = [i for i in itens if i['qtd_vendida'] > 0]
+            resumo[estab] = {
+                'total_registros':   len(itens),
+                'com_venda':         len(com_venda),
+                'zerados':           len(itens) - len(com_venda),
+                'primeiros_3':       itens[:3],
+                'primeiros_3_venda': com_venda[:3],
+            }
+        return jsonify(resumo)
+    except Exception as e:
+        return jsonify({'erro': str(e)}), 500
+
 
 @app.route('/api/giro')
 def get_giro():

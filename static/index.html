@@ -180,10 +180,9 @@
       <button class="estab-btn active" onclick="setEstab('todos',this)">Todos</button>
       <button class="estab-btn" onclick="setEstab(1,this)">Viasul</button>
       <button class="estab-btn" onclick="setEstab(2,this)">Aviação</button>
-      <button class="estab-btn" onclick="setEstab(3,this)">Centro</button>
+      <button class="estab-btn" onclick="setEstab(3,this)">Centro / Esportes</button>
       <button class="estab-btn" onclick="setEstab(4,this)">Gressler</button>
       <button class="estab-btn" onclick="setEstab(5,this)">Arroio do Meio</button>
-      <button class="estab-btn" onclick="setEstab(7,this)">Esportes</button>
     </div>
 
     <div class="marca-wrap" style="margin-left:auto;">
@@ -261,10 +260,9 @@
       <button class="tf-btn active" onclick="setTfFiltro('todos',this)">Todas</button>
       <button class="tf-btn" onclick="setTfFiltro(1,this)">Viasul</button>
       <button class="tf-btn" onclick="setTfFiltro(2,this)">Aviação</button>
-      <button class="tf-btn" onclick="setTfFiltro(3,this)">Centro</button>
+      <button class="tf-btn" onclick="setTfFiltro(3,this)">Centro / Esportes</button>
       <button class="tf-btn" onclick="setTfFiltro(4,this)">Gressler</button>
       <button class="tf-btn" onclick="setTfFiltro(5,this)">Arroio do Meio</button>
-      <button class="tf-btn" onclick="setTfFiltro(7,this)">Esportes</button>
     </div>
 
     <div class="marca-wrap" style="margin-left:auto;">
@@ -587,7 +585,7 @@ function renderTransferencias() {
     <td><span class="marca-pill">${t.marca||'—'}</span></td>
     <td style="font-size:0.82rem">${t.descricao}</td>
     <td><span class="cor-tag">${t.cor}</span></td>
-    <td><div class="loja-origem">${t.origem_nome}</div><div class="loja-sub">Estoque: ${t.origem_estoque} · Giro: ${t.origem_pct.toFixed(1)}%</div></td>
+    <td><div class="loja-origem">${t.origem_nome}</div><div class="loja-sub">Estoque: ${t.origem_estoque} · Giro: ${t.origem_pct.toFixed(1)}%${t.reserva_centro != null ? ` · <span style="font-weight:500;color:#7C3AED;cursor:help;border-bottom:1px dotted #7C3AED;" title="Média das outras lojas: ${t.media_outras} pç + 50% a mais = ${t.reserva_centro} pç reservadas para o Centro/Esportes">Reserva 50%: ${t.reserva_centro} pç</span>` : ''}</div></td>
     <td class="arrow-cell">→</td>
     <td><div class="loja-destino">${t.destino_nome}</div><div class="loja-sub">Estoque: ${t.destino_estoque} · Giro: ${t.destino_pct.toFixed(1)}%</div></td>
     <td><span class="diff-badge">+${t.diff_pct.toFixed(1)}%</span></td>
