@@ -152,6 +152,42 @@
 
     .empty-msg { text-align: center; padding: 2.5rem; color: #aaa; font-size: 0.82rem; }
 
+    /* Colunas redimensionáveis */
+    table { table-layout: fixed; }
+    th { position: relative; overflow: hidden; }
+    .col-resize { position: absolute; right: 0; top: 0; bottom: 0; width: 6px; cursor: col-resize; background: rgba(0,0,0,0.08); border-right: 2px solid #d0d0c8; transition: background 0.15s; }
+    .col-resize:hover, .col-resize.resizing { background: #2563EB; border-right-color: #2563EB; opacity: 0.8; }
+    th { border-right: 1px solid #eeeee6; }
+
+    /* Checkbox seleção */
+    .row-check { width: 36px; text-align: center; }
+    .row-check input[type=checkbox] { accent-color: #2563EB; width: 15px; height: 15px; cursor: pointer; }
+    tr.selected td { background: #EFF6FF !important; }
+
+    /* Barra de ação seleção */
+    .action-bar { display: none; align-items: center; gap: 10px; background: #1e3a5f; border-radius: 10px; padding: 10px 16px; margin-bottom: 1rem; flex-wrap: wrap; }
+    .action-bar.visible { display: flex; }
+    .action-bar-info { font-size: 0.8rem; color: #fff; font-weight: 500; flex: 1; }
+    .action-bar-info span { background: rgba(255,255,255,0.15); padding: 2px 8px; border-radius: 10px; margin-left: 6px; }
+    .btn-action { display:inline-flex; align-items:center; gap:6px; padding:7px 14px; border-radius:8px; border:none; font-size:0.78rem; font-weight:500; cursor:pointer; white-space:nowrap; }
+    .btn-action-wpp { background:#25D366; color:#fff; }
+    .btn-action-wpp:hover { background:#1ebe5d; }
+    .btn-action-excel { background:#217346; color:#fff; }
+    .btn-action-excel:hover { background:#1a5c38; }
+    .btn-action-clear { background:rgba(255,255,255,0.15); color:#fff; border:0.5px solid rgba(255,255,255,0.3) !important; }
+    .btn-action-clear:hover { background:rgba(255,255,255,0.25); }
+
+    /* Modal WhatsApp agrupado */
+    .wpp-loja-group { margin-bottom: 1rem; }
+    .wpp-loja-title { font-size: 0.75rem; font-weight: 600; color: #1a3a6e; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px; padding-bottom: 4px; border-bottom: 1px solid #e0e0d8; }
+    .wpp-loja-field { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+    .wpp-loja-field label { font-size: 0.72rem; color: #888; white-space: nowrap; min-width: 80px; }
+    .wpp-loja-field .phone-wrap { display: flex; align-items: center; border: 1px solid #e0e0d8; border-radius: 8px; overflow: hidden; flex: 1; }
+    .wpp-loja-field .ddd-prefix { padding: 7px 10px; background: #f4f3ee; font-size: 0.82rem; color: #555; border-right: 1px solid #e0e0d8; white-space: nowrap; }
+    .wpp-loja-field input { flex:1; padding: 7px 10px; border:none; font-size: 0.82rem; color: #1a1a18; outline: none; }
+    .wpp-send-loja { padding: 6px 12px; border-radius: 6px; background: #25D366; border: none; color: #fff; font-size: 0.75rem; font-weight: 500; cursor: pointer; display:flex; align-items:center; gap:4px; }
+    .wpp-send-loja:hover { background: #1ebe5d; }
+
     /* Botão WhatsApp */
     .btn-wpp { display:inline-flex; align-items:center; gap:5px; padding:4px 10px; border-radius:8px; background:#25D366; border:none; color:#fff; font-size:0.75rem; font-weight:500; cursor:pointer; white-space:nowrap; }
     .btn-wpp:hover { background:#1ebe5d; }
@@ -175,6 +211,7 @@
     .wpp-btn-cancel:hover { background:#f4f3ee; }
     .erro-msg   { text-align: center; padding: 2rem; color: #B91C1C; font-size: 0.82rem; }
   </style>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 </head>
 <body>
 
@@ -304,7 +341,7 @@
       <span class="count" id="tbl-count"></span>
     </div>
     <div class="tbl-scroll">
-      <table>
+      <table id="giro-table">
         <thead>
           <tr>
             <th onclick="sortGiro('codigo')" id="th-codigo">Referência <span class="arrow" id="arr-codigo">↕</span></th>
@@ -382,15 +419,31 @@
     </div>
   </div>
 
+  <div class="action-bar" id="action-bar">
+    <div class="action-bar-info">
+      <span id="sel-count">0</span> referência(s) selecionada(s)
+    </div>
+    <button class="btn-action btn-action-wpp" id="btn-wpp-multi" onclick="abrirWppMultiplo()" disabled style="opacity:0.4;cursor:not-allowed;">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+      WhatsApp por loja
+    </button>
+    <button class="btn-action btn-action-excel" id="btn-excel-multi" onclick="exportarExcel()" disabled style="opacity:0.4;cursor:not-allowed;">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6zm4 18H6V4h7v5h5v11zM8 15h2.5l1.5 2 1.5-2H16l-2.5 3.5L16 22h-2.5L12 20l-1.5 2H8l2.5-3.5L8 15z"/></svg>
+      Exportar Excel
+    </button>
+    <button class="btn-action btn-action-clear" onclick="limparSelecao()">✕ Limpar seleção</button>
+  </div>
+
   <div class="table-card">
     <div class="table-header">
       <span>Sugestões de transferência</span>
       <span class="count" id="tf-count"></span>
     </div>
     <div class="tbl-scroll">
-      <table>
+      <table id="tf-table">
         <thead>
           <tr>
+            <th class="row-check"><input type="checkbox" id="check-all" onclick="toggleAll(this)"/></th>
             <th onclick="sortTf('codigo')" id="tth-codigo">Referência <span class="arrow" id="tarr-codigo">↕</span></th>
             <th onclick="sortTf('marca')" id="tth-marca">Marca <span class="arrow" id="tarr-marca">↕</span></th>
             <th onclick="sortTf('descricao')" id="tth-descricao">Descrição <span class="arrow" id="tarr-descricao">↕</span></th>
@@ -402,7 +455,7 @@
             <th onclick="sortTf('origem_dias')" id="tth-origem_dias" style="text-align:center">Dias na origem <span class="arrow" id="tarr-origem_dias">↕</span></th>
             <th onclick="sortTf('qtd_sugerida')" id="tth-qtd_sugerida" style="text-align:center">Qtd sugerida <span class="arrow" id="tarr-qtd_sugerida">↕</span></th>
             <th onclick="sortTf('prioridade')" id="tth-prioridade">Prioridade <span class="arrow" id="tarr-prioridade">↓</span></th>
-            <th style="text-align:center">WhatsApp</th>
+
           </tr>
         </thead>
         <tbody id="tf-body"></tbody>
@@ -415,6 +468,40 @@
     Grupo Bade · v1.1 · Plataforma de Inteligência de Varejo
   </div>
 </div><!-- fim .content -->
+
+<!-- Modal WhatsApp Múltiplo -->
+<div class="wpp-overlay" id="wpp-multi-overlay" onclick="fecharWppMulti(event)">
+  <div class="wpp-modal" style="max-width:520px;max-height:85vh;display:flex;flex-direction:column;">
+    <h3 style="margin-bottom:4px;">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="#25D366"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+      Enviar via WhatsApp
+    </h3>
+    <div class="wpp-sub" id="wpp-multi-sub"></div>
+
+    <!-- Preview da mensagem -->
+    <div style="overflow-y:auto;flex:1;margin-bottom:1rem;">
+      <div style="font-size:0.72rem;color:#888;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:6px;">Itens selecionados</div>
+      <div class="wpp-preview" id="wpp-multi-preview" style="font-size:0.78rem;max-height:220px;overflow-y:auto;"></div>
+    </div>
+
+    <!-- Número da loja destino -->
+    <div class="wpp-field" style="margin-bottom:1rem;">
+      <label>Número da loja destino</label>
+      <div class="phone-wrap">
+        <span class="ddd-prefix">🇧🇷 +55 (51)</span>
+        <input type="tel" id="wpp-multi-numero" placeholder="9 9999-9999" maxlength="10" oninput="this.value=this.value.replace(/[^0-9]/g,'')"/>
+      </div>
+    </div>
+
+    <div class="wpp-actions">
+      <button class="wpp-btn-cancel" onclick="fecharWppMulti()">Cancelar</button>
+      <button class="wpp-btn-send" onclick="enviarWppMulti()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+        Abrir WhatsApp
+      </button>
+    </div>
+  </div>
+</div>
 
 <!-- Modal WhatsApp -->
 <div class="wpp-overlay" id="wpp-overlay" onclick="fecharWpp(event)">
@@ -443,6 +530,7 @@
 </div>
 
 <script>
+let msgWppMulti = '';
 let giroData = [], transfData = [];
 let currentFilter = 'todos', currentEstab = 'todos';
 let marcasSelecionadas = { giro: new Set(), tf: new Set() };
@@ -628,6 +716,7 @@ function renderGiro() {
     document.getElementById('table-body').innerHTML = '<tr><td colspan="10" class="empty-msg">Nenhum produto encontrado</td></tr>';
     return;
   }
+  setTimeout(()=>initResizable('giro-table'),100);
   document.getElementById('table-body').innerHTML = data.map(d => {
     const s  = semaforo(d.pct_vendido, d.elegivel);
     const bw = Math.min(100, d.pct_vendido).toFixed(1);
@@ -704,7 +793,9 @@ function renderTransferencias() {
     document.getElementById('tf-body').innerHTML = '<tr><td colspan="11" class="empty-msg">Nenhuma sugestão encontrada</td></tr>';
     return;
   }
-  document.getElementById('tf-body').innerHTML = data.map(t => `<tr class="transfer-row">
+  setTimeout(()=>initResizable('tf-table'),100);
+  document.getElementById('tf-body').innerHTML = data.map((t,i) => `<tr class="transfer-row" id="tf-row-${i}" data-codigo="${t.codigo}" data-marca="${t.marca||''}" data-descricao="${t.descricao||''}" data-cor="${t.cor}" data-origem="${t.origem_nome}" data-destino="${t.destino_nome}" data-qtd="${t.qtd_sugerida}">
+    <td class="row-check"><input type="checkbox" class="tf-check" onchange="atualizarSelecao()"/></td>
     <td><span class="ref">${t.codigo}</span></td>
     <td><span class="marca-pill">${t.marca||'—'}</span></td>
     <td style="font-size:0.82rem">${t.descricao}</td>
@@ -716,12 +807,7 @@ function renderTransferencias() {
     <td style="text-align:center"><span style="font-size:0.78rem;color:#6B7280">${t.origem_dias} dias</span></td>
     <td style="text-align:center"><span class="qtd-badge">${t.qtd_sugerida} pç</span></td>
     <td>${prioridadeBadge(t.prioridade, maxP)}</td>
-    <td style="text-align:center">
-      <button class="btn-wpp" onclick="abrirWpp('${t.codigo}','${t.descricao.replace(/'/g,'')}','${t.cor}','${t.qtd_sugerida}','${t.destino_nome.replace(/'/g,'')}')">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
-        Enviar
-      </button>
-    </td>
+
   </tr>`).join('');
 }
 
@@ -742,6 +828,122 @@ function setTfFiltro(e, btn) {
 }
 
 loadAll();
+
+// ─── Colunas redimensionáveis ──────────────────────────────────────────────
+function initResizable(tableId) {
+  const table = document.getElementById(tableId);
+  if (!table) return;
+  const cols = table.querySelectorAll('th');
+  cols.forEach(col => {
+    const div = document.createElement('div');
+    div.classList.add('col-resize');
+    col.appendChild(div);
+    let x=0, w=0;
+    div.addEventListener('mousedown', e => {
+      x = e.clientX; w = col.offsetWidth;
+      div.classList.add('resizing');
+      document.addEventListener('mousemove', onMove);
+      document.addEventListener('mouseup', onUp);
+      e.preventDefault();
+    });
+    function onMove(e) { col.style.width = Math.max(60, w + e.clientX - x) + 'px'; }
+    function onUp() { div.classList.remove('resizing'); document.removeEventListener('mousemove', onMove); document.removeEventListener('mouseup', onUp); }
+  });
+}
+
+// ─── Seleção múltipla ────────────────────────────────────────────────────────
+let itensSelecionados = [];
+
+function atualizarSelecao() {
+  const checks = document.querySelectorAll('.tf-check:checked');
+  itensSelecionados = [];
+  checks.forEach(c => {
+    const row = c.closest('tr');
+    itensSelecionados.push({
+      codigo:    row.dataset.codigo,
+      marca:     row.dataset.marca,
+      descricao: row.dataset.descricao,
+      cor:       row.dataset.cor,
+      origem:    row.dataset.origem,
+      destino:   row.dataset.destino,
+      qtd:       row.dataset.qtd,
+    });
+  });
+  const n = itensSelecionados.length;
+  const bar = document.getElementById('action-bar');
+  const btnWpp = document.getElementById('btn-wpp-multi');
+  const btnXls = document.getElementById('btn-excel-multi');
+  document.getElementById('sel-count').textContent = n;
+  if (n > 0) {
+    bar.classList.add('visible');
+    btnWpp.disabled = false; btnWpp.style.opacity = '1'; btnWpp.style.cursor = 'pointer';
+    btnXls.disabled = false; btnXls.style.opacity = '1'; btnXls.style.cursor = 'pointer';
+  } else {
+    bar.classList.remove('visible');
+    btnWpp.disabled = true; btnWpp.style.opacity = '0.4'; btnWpp.style.cursor = 'not-allowed';
+    btnXls.disabled = true; btnXls.style.opacity = '0.4'; btnXls.style.cursor = 'not-allowed';
+  }
+}
+
+function toggleAll(el) {
+  document.querySelectorAll('.tf-check').forEach(c => c.checked = el.checked);
+  atualizarSelecao();
+}
+
+function limparSelecao() {
+  document.querySelectorAll('.tf-check, #check-all').forEach(c => c.checked = false);
+  itensSelecionados = [];
+  document.getElementById('action-bar').classList.remove('visible');
+}
+
+function abrirWppMultiplo() {
+  if (!itensSelecionados.length) return;
+  var linhas = itensSelecionados.map(function(i) {
+    return '\u2022 Ref: ' + i.codigo + ' | ' + i.descricao + ' | Cor: ' + i.cor + ' | Qtd: ' + i.qtd + ' pc | Destino: ' + i.destino;
+  }).join('\n');
+  msgWppMulti = 'Ola! Por favor, separe os itens abaixo para transferencia:\n\n' + linhas + '\n\nObrigado!';
+  document.getElementById('wpp-multi-sub').textContent = itensSelecionados.length + ' referencia(s) selecionada(s)';
+  document.getElementById('wpp-multi-preview').innerHTML = linhas.split('\n').join('<br>');
+  document.getElementById('wpp-multi-numero').value = '';
+  document.getElementById('wpp-multi-overlay').classList.add('open');
+}
+
+function enviarWppMulti() {
+  var num = document.getElementById('wpp-multi-numero').value.trim();
+  if (num.length < 8) { alert('Digite o numero da loja destino!'); return; }
+  var tel = '5551' + num;
+  window.open('https://wa.me/' + tel + '?text=' + encodeURIComponent(msgWppMulti), '_blank');
+  fecharWppMulti();
+}
+
+function fecharWppMulti(e) {
+  if (!e || e.target === document.getElementById('wpp-multi-overlay'))
+    document.getElementById('wpp-multi-overlay').classList.remove('open');
+}
+
+function exportarExcel() {
+  if (!itensSelecionados.length) return;
+  var header = ['Referência','Marca','Descrição','Cor','Origem','Destino','Qtd Sugerida'];
+  var rows = itensSelecionados.map(function(i) {
+    return [i.codigo, i.marca, i.descricao, i.cor, i.origem, i.destino, Number(i.qtd)];
+  });
+  var wsData = [header].concat(rows);
+  var ws = XLSX.utils.aoa_to_sheet(wsData);
+  // Largura das colunas
+  ws['!cols'] = [
+    {wch:14}, {wch:16}, {wch:45}, {wch:14},
+    {wch:22}, {wch:22}, {wch:14}
+  ];
+  // Estilo do cabeçalho (negrito)
+  var range = XLSX.utils.decode_range(ws['!ref']);
+  for (var C = range.s.c; C <= range.e.c; C++) {
+    var cell = ws[XLSX.utils.encode_cell({r:0, c:C})];
+    if (cell) cell.s = { font: { bold: true } };
+  }
+  var wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Transferências');
+  XLSX.writeFile(wb, 'transferencias_bade_' + new Date().toISOString().slice(0,10) + '.xlsx');
+}
 
 // ─── WhatsApp ─────────────────────────────────────────────────────────────
 let wppDados = {};
